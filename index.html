@@ -49,7 +49,9 @@
   --gold-dark:   #A6821A;
   --text:        #F5F5F5;
   --muted:       #94A3B8;
+  --muted-2:     #7A8AA3;  /* texto terciario: 5.69:1 sobre --bg */
   --border:      rgba(148, 163, 184, .14);
+  --border-ctrl: rgba(148, 163, 184, .60);  /* bordes de controles: 3.4:1 (WCAG 1.4.11) */
   --border-gold: rgba(212, 175, 55, .28);
 
   /* Forma */
@@ -227,7 +229,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .btn--primary:hover { box-shadow: 0 26px 70px -26px rgba(212, 175, 55, .8); transform: translateY(-2px); }
 
 .btn--ghost {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-ctrl);
   background: rgba(255, 255, 255, .02);
   color: var(--text);
 }
@@ -397,7 +399,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   display: none;
   width: 46px;
   height: 46px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-ctrl);
   border-radius: 12px;
   place-items: center;
   gap: 5px;
@@ -485,7 +487,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   max-width: 16ch;
 }
 .hero__line { display: block; overflow: hidden; padding-bottom: .06em; }
-.hero__line > span { display: block; will-change: transform; }
+.hero__line > span { display: block; }
 .hero__title .accent { background-image: linear-gradient(115deg, #FFF3D0, var(--gold) 45%, var(--gold-dark) 92%); }
 
 .hero__sub {
@@ -570,7 +572,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .code-panel__body .ln { display: block; white-space: pre; color: #CBD5E1; }
 .tk-k { color: #7DA2F7; }
 .tk-s { color: var(--gold-light); }
-.tk-c { color: #55627A; font-style: italic; }
+.tk-c { color: #7482A0; font-style: italic; }
 .tk-f { color: #E2E8F0; }
 
 .floating {
@@ -637,7 +639,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   font-family: 'Sora', sans-serif;
   font-size: clamp(.875rem, 1.2vw, 1.0625rem);
   font-weight: 600;
-  color: #64748B;
+  color: var(--muted-2);
   letter-spacing: -.01em;
   white-space: nowrap;
 }
@@ -1066,7 +1068,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 /* ===== 12. FAQ ========================================================== */
 .faq { max-width: 52rem; margin-inline: auto; }
 .faq__item {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-ctrl);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, .02);
   margin-bottom: .75rem;
@@ -1151,7 +1153,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .final-cta h2 { font-size: clamp(1.9rem, 4.6vw, 3.15rem); max-width: 18ch; margin-inline: auto; }
 .final-cta p { margin: 1.25rem auto 0; max-width: 34rem; color: var(--muted); }
 .final-cta .btn { margin-top: 2.25rem; }
-.final-cta__note { margin-top: 1.5rem; font-size: .8125rem; color: #64748B; }
+.final-cta__note { margin-top: 1.5rem; font-size: .8125rem; color: var(--muted-2); }
 
 .footer {
   border-top: 1px solid var(--border);
@@ -1189,7 +1191,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   color: #CBD5E1;
 }
 .footer__social svg { width: 17px; height: 17px; color: var(--gold); flex: none; }
-.pending { font-size: .7rem; color: #64748B; letter-spacing: .06em; }
+.pending { font-size: .7rem; color: var(--muted-2); letter-spacing: .06em; }
 .footer__bottom {
   display: flex;
   flex-wrap: wrap;
@@ -1198,7 +1200,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   gap: 1rem;
   padding-top: 2rem;
   font-size: .8125rem;
-  color: #64748B;
+  color: var(--muted-2);
 }
 
 /* ===== 14. RESPONSIVE =================================================== */
@@ -2250,24 +2252,27 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
     });
   }
 
-  // Halo dorado que sigue al cursor (solo en dispositivos con puntero preciso)
+  /* Halo dorado que sigue al cursor (solo en punteros precisos).
+     gsap.quickTo reutiliza un único tween y se detiene solo cuando el puntero
+     se queda quieto: nada de requestAnimationFrame corriendo de forma indefinida. */
   if (pointer && finePoint && !reduce) {
-    var target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    var cur    = { x: target.x, y: target.y };
-    var moved  = false;
+    var moved = false;
+    var moveX, moveY;
+
+    if (hasGSAP) {
+      moveX = gsap.quickTo(pointer, 'x', { duration: .55, ease: 'power3' });
+      moveY = gsap.quickTo(pointer, 'y', { duration: .55, ease: 'power3' });
+    } else {
+      // Sin GSAP el halo sigue al cursor sin suavizado, pero sigue funcionando
+      moveX = function (v) { pointer.style.left = v + 'px'; };
+      moveY = function (v) { pointer.style.top  = v + 'px'; };
+    }
 
     window.addEventListener('pointermove', function (e) {
-      target.x = e.clientX;
-      target.y = e.clientY;
+      moveX(e.clientX);
+      moveY(e.clientY);
       if (!moved) { moved = true; pointer.classList.add('is-on'); }
     }, { passive: true });
-
-    (function follow() {
-      cur.x += (target.x - cur.x) * .07;
-      cur.y += (target.y - cur.y) * .07;
-      pointer.style.transform = 'translate3d(' + cur.x.toFixed(1) + 'px,' + cur.y.toFixed(1) + 'px,0)';
-      requestAnimationFrame(follow);
-    })();
   }
 
   /* ===== 8. PARTÍCULAS DE LA SECCIÓN CINEMATOGRÁFICA ================== */
@@ -2307,19 +2312,18 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   /* --- 9.b Experiencia completa --- */
   mm.add('(prefers-reduced-motion: no-preference)', function () {
 
-    /* Entrada del hero: una sola línea de tiempo maestra */
-    var intro = gsap.timeline({ defaults: { ease: 'expo.out' } });
+    /* Entrada del hero: una sola línea de tiempo maestra.
+       Los estados iniciales se fijan antes de construir la línea de tiempo. */
+    gsap.set(['.hero__badge', '.hero__sub', '.hero__actions', '.hero__meta'], { y: 18 });
+    gsap.set('.hero__visual', { y: 28 });
 
-    intro
-      .to('.hero__line > span', { y: 0, duration: 1.05, stagger: .09 })
+    gsap.timeline({ defaults: { ease: 'expo.out' } })
+      .to('.hero__line > span', { y: 0, duration: 1.05, stagger: .09, clearProps: 'transform' })
       .to('.hero__badge',   { opacity: 1, y: 0, duration: .7, ease: 'power2.out' }, .1)
       .to('.hero__sub',     { opacity: 1, y: 0, duration: .7, ease: 'power2.out' }, '-=.55')
       .to('.hero__actions', { opacity: 1, y: 0, duration: .7, ease: 'power2.out' }, '-=.5')
       .to('.hero__meta',    { opacity: 1, y: 0, duration: .7, ease: 'power2.out' }, '-=.45')
       .to('.hero__visual',  { opacity: 1, y: 0, duration: .9, ease: 'power3.out' }, '-=.85');
-
-    gsap.set(['.hero__badge', '.hero__sub', '.hero__actions', '.hero__meta'], { y: 18 });
-    gsap.set('.hero__visual', { y: 28 });
 
     /* Elementos flotantes del hero: movimiento continuo muy sutil */
     gsap.utils.toArray('[data-float]').forEach(function (el) {
@@ -2333,42 +2337,47 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
       });
     });
 
+    /* Parallax del panel de código del hero.
+       Se crea primero: ScrollTrigger refresca en orden de creación y este es el
+       trigger más alto de la página. */
+    var panel = document.getElementById('codePanel');
+    if (panel && window.ScrollTrigger) {
+      gsap.to(panel, {
+        yPercent: -8,
+        ease: 'none',
+        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: .6 }
+      });
+    }
+
     /* Aparición progresiva del resto de contenidos al hacer scroll.
-       Se excluye lo que ya tiene su propia animación: hero, grillas y CTA final. */
+       ScrollTrigger.batch agrupa todo lo que entra en pantalla a la vez y lo anima
+       con un solo stagger: un trigger por elemento pero callbacks agrupados,
+       en lugar de decenas de tweens sueltos. Se excluye lo que ya tiene su propia
+       animación: el hero y el CTA final. */
     var revealables = gsap.utils.toArray('[data-reveal]').filter(function (el) {
-      return !el.closest('.hero') && !el.closest('.grid') && !el.classList.contains('final-cta');
+      return !el.closest('.hero') && !el.classList.contains('final-cta');
     });
 
-    revealables.forEach(function (el) {
-      gsap.fromTo(el,
-        { opacity: 0, y: 26 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: .75,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: el, start: 'top 88%', once: true }
+    if (revealables.length && window.ScrollTrigger) {
+      gsap.set(revealables, { y: 16 });
+      ScrollTrigger.batch(revealables, {
+        start: 'top 88%',
+        once: true,
+        batchMax: 6,
+        onEnter: function (batch) {
+          gsap.to(batch, {
+            opacity: 1,
+            y: 0,
+            duration: .65,
+            ease: 'power2.out',
+            stagger: .08,
+            overwrite: true
+          });
         }
-      );
-    });
-
-    /* Aparición escalonada de las tarjetas dentro de cada grilla */
-    gsap.utils.toArray('.grid').forEach(function (grid) {
-      var cards = grid.querySelectorAll('[data-reveal]');
-      if (cards.length < 2) return;
-      gsap.fromTo(cards,
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: .7,
-          ease: 'power2.out',
-          stagger: .08,
-          overwrite: 'auto',
-          scrollTrigger: { trigger: grid, start: 'top 82%', once: true }
-        }
-      );
-    });
+      });
+    } else {
+      gsap.set(revealables, { opacity: 1, y: 0 });
+    }
 
     /* Línea dorada del proceso: se dibuja al entrar en pantalla */
     var line = document.getElementById('processLine');
@@ -2378,16 +2387,6 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
         duration: 1.2,
         ease: 'power2.inOut',
         scrollTrigger: { trigger: '.process__track', start: 'top 75%', once: true }
-      });
-    }
-
-    /* Parallax del panel de código del hero */
-    var panel = document.getElementById('codePanel');
-    if (panel && window.ScrollTrigger) {
-      gsap.to(panel, {
-        yPercent: -8,
-        ease: 'none',
-        scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: .6 }
       });
     }
 
